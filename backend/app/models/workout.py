@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.database.base import Base
 
 class Workout(Base):
     __tablename__ = "workouts"
@@ -20,3 +20,4 @@ class Workout(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="workouts")
+    exercise_links = relationship("WorkoutExercise", back_populates="workout", cascade="all, delete-orphan")

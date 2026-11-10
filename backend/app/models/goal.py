@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from sqlalchemy import Date, DateTime, ForeignKey, Float, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.database.base import Base
 
 class Goal(Base):
     __tablename__ = "goals"

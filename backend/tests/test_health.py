@@ -1,4 +1,4 @@
-def test_health_endpoint():
-    # Lightweight placeholder test: run the app manually and verify GET /health.
-    # Full automated API tests can be added with a dedicated test database.
-    assert True
+def test_health_endpoint(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}

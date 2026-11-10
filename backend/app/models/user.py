@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+from app.database.base import Base
 
 class User(Base):
     __tablename__ = "users"
