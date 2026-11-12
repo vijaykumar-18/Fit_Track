@@ -1,7 +1,7 @@
 from datetime import date
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.badge import UserBadge
 from app.models.goal import Goal
@@ -30,6 +30,7 @@ def get_dashboard_data(db: Session, user: User) -> dict:
     goals = db.query(Goal).filter(Goal.user_id == user.id).order_by(Goal.created_at.desc()).all()
     earned = (
         db.query(UserBadge)
+        .options(joinedload(UserBadge.badge))
         .filter(UserBadge.user_id == user.id)
         .order_by(UserBadge.earned_at.desc())
         .all()

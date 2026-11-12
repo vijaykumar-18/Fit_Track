@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { Activity, Award, Bell, BookOpen, CalendarDays, CalendarRange, ChartNoAxesCombined, Check, Dumbbell, Flag, Flame, LayoutDashboard, LogOut, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, CalendarDays, CalendarRange, ChartNoAxesCombined, Check, Droplets, Dumbbell, Flag, Flame, LayoutDashboard, LogOut, Pencil, Play, Plus, Square, Trash2, UserRound } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from './services/api'
 import { logout as clearAuth } from './services/authService'
@@ -10,17 +10,31 @@ import { AuthPage } from './pages/AuthPage'
 import { useFitnessData } from './hooks/useFitnessData'
 import { EmptyState as Empty, StatCard } from './components/StatCard'
 import { localDateString } from './utils/date'
+import { NutritionPage, RecommendationsPage, ReminderSettingsPage } from './pages/PhaseThreeFeatures'
 
 const today = () => localDateString()
+const caloriesPerMinute: Record<Workout['category'], number> = { Cardio: 8, Strength: 6, Yoga: 3 }
 
-function Protected({ children }: { children: JSX.Element }) {
-  return localStorage.getItem('fittrack_token') ? children : <Navigate to="/login" replace />
+function Protected({ children, fallback }: { children: JSX.Element; fallback?: JSX.Element }) {
+  return localStorage.getItem('fittrack_token') ? children : fallback ?? <Navigate to="/login" replace />
 }
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [refresh, setRefresh] = useState(0)
   const navigate = useNavigate()
+  const logout = () => {
+    clearAuth()
+    setUser(null)
+    navigate('/login')
+  }
+  const onAuth = (authenticatedUser: User) => {
+    setUser(authenticatedUser)
+    setRefresh(value => value + 1)
+    navigate('/')
+  }
+  const loginPage = <AuthPage mode="login" onAuth={onAuth} />
+  const shell = <Shell user={user} onLogout={logout} refresh={refresh} onRefresh={() => setRefresh(value => value + 1)} />
 
   useEffect(() => {
     if (!localStorage.getItem('fittrack_token')) return
@@ -29,17 +43,12 @@ export default function App() {
     })
   }, [refresh])
 
-  const logout = () => {
-    clearAuth()
-    setUser(null)
-    navigate('/login')
-  }
-
   return (
     <Routes>
-      <Route path="/login" element={<AuthPage mode="login" onAuth={u => { setUser(u); setRefresh(v => v + 1); navigate('/') }} />} />
+      <Route path="/" element={<Protected fallback={loginPage}>{shell}</Protected>} />
+      <Route path="/login" element={loginPage} />
       <Route path="/register" element={<AuthPage mode="register" onAuth={() => navigate('/login')} />} />
-      <Route path="/*" element={<Protected><Shell user={user} onLogout={logout} refresh={refresh} onRefresh={() => setRefresh(v => v + 1)} /></Protected>} />
+      <Route path="/*" element={<Protected>{shell}</Protected>} />
     </Routes>
   )
 }
@@ -51,6 +60,8 @@ function Shell({ user, onLogout, refresh, onRefresh }: { user: User | null; onLo
     { name: 'Goals', icon: Flag }, { name: 'Analytics', icon: ChartNoAxesCombined },
     { name: 'Schedule', icon: CalendarRange }, { name: 'Exercise Library', icon: BookOpen },
     { name: 'Achievements', icon: Award }, { name: 'Notifications', icon: Bell },
+    { name: 'Nutrition & Water', icon: Droplets }, { name: 'Recommendations', icon: Activity },
+    { name: 'Reminders', icon: Bell },
   ]
   return <div className="app-shell">
     <aside className="sidebar">
@@ -69,6 +80,9 @@ function Shell({ user, onLogout, refresh, onRefresh }: { user: User | null; onLo
       {page === 'Exercise Library' && <ExerciseLibraryPage refresh={refresh} onRefresh={onRefresh} />}
       {page === 'Achievements' && <Achievements refresh={refresh} />}
       {page === 'Notifications' && <Notifications refresh={refresh} />}
+      {page === 'Nutrition & Water' && <NutritionPage refresh={refresh} />}
+      {page === 'Recommendations' && <RecommendationsPage onNavigate={setPage} />}
+      {page === 'Reminders' && <ReminderSettingsPage refresh={refresh} />}
     </main>
   </div>
 }
@@ -114,6 +128,17 @@ function Workouts({ refresh, onRefresh }: { refresh: number; onRefresh: () => vo
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null)
+  const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null)
+  const [timerElapsed, setTimerElapsed] = useState(0)
+  const [timerName, setTimerName] = useState('Timed workout')
+  const [timerCategory, setTimerCategory] = useState<Workout['category']>('Cardio')
+  const [timerMessage, setTimerMessage] = useState('')
+
+  useEffect(() => {
+    if (timerStartedAt === null) return
+    const interval = window.setInterval(() => setTimerElapsed(Math.floor((Date.now() - timerStartedAt) / 1000)), 250)
+    return () => window.clearInterval(interval)
+  }, [timerStartedAt])
 
   async function addWorkout(e: FormEvent) {
     e.preventDefault(); setMessage(''); setBusy(true)
@@ -143,9 +168,45 @@ function Workouts({ refresh, onRefresh }: { refresh: number; onRefresh: () => vo
     if (!confirm('Delete this workout?')) return
     try { await api.delete(`/workouts/${id}`); onRefresh() } catch { setMessage('Could not delete workout.') }
   }
+  async function stopAndSaveTimer() {
+    if (timerStartedAt === null) return
+    const seconds = Math.max(1, Math.floor((Date.now() - timerStartedAt) / 1000))
+    const minutes = Math.max(1, Math.ceil(seconds / 60))
+    try {
+      await api.post('/workouts', {
+        workout_name: timerName.trim() || 'Timed workout',
+        category: timerCategory,
+        duration: minutes,
+        calories_burned: Math.round(minutes * caloriesPerMinute[timerCategory]),
+        workout_date: today(),
+      })
+      setTimerStartedAt(null)
+      setTimerElapsed(0)
+      setTimerMessage('Timed workout saved to your history.')
+      onRefresh()
+    } catch (e: any) {
+      setTimerMessage(e?.response?.data?.detail || 'Could not save timed workout.')
+    }
+  }
+  const timerTime = [Math.floor(timerElapsed / 3600), Math.floor(timerElapsed / 60) % 60, timerElapsed % 60]
+    .map(value => String(value).padStart(2, '0')).join(':')
 
   return <div className="page-stack">
     <div className="section-heading"><div><h2>Workout log</h2><p className="muted">Record your sessions and build consistency.</p></div><span className="count-pill">{workouts.length} sessions</span></div>
+    <section className="panel workout-timer">
+      <div className="panel-heading"><div><h3>Workout timer</h3><p className="muted">Track a live session and save its duration and estimated calories.</p></div><Activity size={19} /></div>
+      <div className="timer-controls">
+        <label>Session name<input value={timerName} maxLength={120} disabled={timerStartedAt !== null} onChange={event => setTimerName(event.target.value)} /></label>
+        <label>Category<select value={timerCategory} disabled={timerStartedAt !== null} onChange={event => setTimerCategory(event.target.value as Workout['category'])}><option>Cardio</option><option>Strength</option><option>Yoga</option></select></label>
+        <strong className="timer-display" aria-live="polite">{timerTime}</strong>
+        {timerStartedAt === null
+          ? <button className="primary" onClick={() => { setTimerMessage(''); setTimerElapsed(0); setTimerStartedAt(Date.now()) }}><Play size={16} /> Start</button>
+          : <button className="primary timer-stop" onClick={() => void stopAndSaveTimer()}><Square size={15} /> Stop & save</button>}
+      </div>
+      <p className="timer-estimate">Estimated calories: {Math.round(timerElapsed / 60 * caloriesPerMinute[timerCategory])} kcal</p>
+      {timerMessage && <p className={timerMessage.includes('saved') ? 'success-text' : 'error'}>{timerMessage}</p>}
+      <p className="muted small">Calorie values are estimates based on workout category and duration.</p>
+    </section>
     <div className="content-grid workout-layout">
       <form className="panel form-panel" onSubmit={addWorkout}><div className="panel-heading"><div><h3>{editingWorkout ? 'Edit workout' : 'Log a workout'}</h3><p className="muted">{editingWorkout ? 'Update your completed session' : 'Add a completed session'}</p></div><div className="small-icon"><Plus size={18} /></div></div>
         <label>Workout name<input required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Morning run" /></label>
@@ -209,6 +270,7 @@ function Analytics({ refresh }: { refresh: number }) {
   const [monthly, setMonthly] = useState<any>(null)
   const [comparison, setComparison] = useState<any>(null)
   const [monthlyComparison, setMonthlyComparison] = useState<any>(null)
+  const [advanced, setAdvanced] = useState<any>(null)
   const [error, setError] = useState('')
   useEffect(() => {
     const now = new Date()
@@ -217,10 +279,16 @@ function Analytics({ refresh }: { refresh: number }) {
       api.get('/progress/monthly', { params: { year: now.getFullYear(), month: now.getMonth() + 1 } }),
       api.get('/progress/comparison', { params: { period: 'weekly' } }),
       api.get('/progress/comparison', { params: { period: 'monthly' } }),
-    ]).then(([w, m, c, mc]) => { setWeekly(w.data.days); setMonthly(m.data); setComparison(c.data); setMonthlyComparison(mc.data); setError('') })
+      api.get('/analytics/advanced'),
+    ]).then(([w, m, c, mc, a]) => { setWeekly(w.data.days); setMonthly(m.data); setComparison(c.data); setMonthlyComparison(mc.data); setAdvanced(a.data); setError('') })
       .catch((e: any) => setError(e?.response?.data?.detail || 'Could not load analytics.'))
   }, [refresh])
   const chartData = useMemo(() => weekly.map(d => ({ day: new Date(`${d.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' }), workouts: d.total_workouts, calories: d.total_calories })), [weekly])
+  const weeklyTrend = useMemo(() => (advanced?.weekly_trend ?? []).map((item: any) => ({
+    week: new Date(`${item.start_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    workouts: item.workouts,
+    calories: item.calories,
+  })), [advanced])
   return <div className="page-stack">
     <div className="section-heading"><div><h2>Your activity insights</h2><p className="muted">Understand your consistency and effort over time.</p></div></div>
     {error && <div className="error">{error}</div>}
@@ -229,11 +297,19 @@ function Analytics({ refresh }: { refresh: number }) {
       <StatCard icon={<Flame />} label="Calories this month" value={(monthly?.total_calories ?? 0).toLocaleString()} unit="kcal" color="orange" />
       <StatCard icon={<Activity />} label="Active time this month" value={monthly?.total_duration ?? 0} unit="minutes" color="blue" />
     </div>
+    <div className="stats-grid three">
+      <StatCard icon={<Activity />} label="30-day consistency" value={advanced?.consistency?.rate_percent ?? 0} unit="% days active" color="blue" />
+      <StatCard icon={<Flag />} label="Goal completion" value={advanced?.goal_completion?.rate_percent ?? 0} unit="% goals completed" color="purple" />
+      <StatCard icon={<Dumbbell />} label="Active days" value={advanced?.consistency?.active_days ?? 0} unit="of 30 days" color="green" />
+    </div>
     {[{ title: 'Week-over-week comparison', data: comparison }, { title: 'Month-over-month comparison', data: monthlyComparison }].map(item => <section className="panel comparison-panel" key={item.title}><div className="panel-heading"><div><h3>{item.title}</h3><p className="muted">Change from the preceding period.</p></div></div>
       <div className="comparison-grid">{(['workouts', 'calories', 'duration'] as const).map(key => <div key={key}><span className="muted small">{key === 'workouts' ? 'Workouts' : key === 'calories' ? 'Calories' : 'Active minutes'}</span><strong>{item.data?.change?.[key] > 0 ? '+' : ''}{item.data?.change?.[key] ?? 0}{key === 'calories' ? ' kcal' : key === 'duration' ? ' min' : ''}</strong></div>)}</div>
     </section>)}
     <section className="panel chart-panel"><div className="panel-heading"><div><h3>Weekly calories burned</h3><p className="muted">Daily calories from your logged workouts</p></div><span className="count-pill">This week</span></div>
       <div className="chart-area">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7ece8" /><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#849087', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#849087', fontSize: 12 }} /><Tooltip cursor={{ fill: '#f2f7f3' }} /><Bar dataKey="calories" fill="#53a875" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer> : <Empty text="Log workouts to see your weekly chart." />}</div>
+    </section>
+    <section className="panel chart-panel"><div className="panel-heading"><div><h3>Eight-week performance trend</h3><p className="muted">Compare weekly workout volume over time.</p></div></div>
+      <div className="chart-area">{weeklyTrend.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={weeklyTrend} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7ece8" /><XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#849087', fontSize: 11 }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#849087', fontSize: 12 }} /><Tooltip /><Bar dataKey="workouts" name="Workouts" fill="#53a875" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer> : <Empty text="Log workouts to see your performance trend." />}</div>
     </section>
     <section className="panel"><div className="panel-heading"><div><h3>Weekly breakdown</h3><p className="muted">A day-by-day view of your sessions.</p></div></div>
       {weekly.length ? <div className="table-wrap"><table><thead><tr><th>Date</th><th>Workouts</th><th>Calories</th><th>Duration</th></tr></thead><tbody>{weekly.map(d => <tr key={d.date}><td>{d.date}</td><td>{d.total_workouts}</td><td>{d.total_calories} kcal</td><td>{d.total_duration} min</td></tr>)}</tbody></table></div> : <Empty text="No activity to report yet." />}

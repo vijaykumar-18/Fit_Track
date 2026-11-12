@@ -8,3 +8,6 @@ from app.models.progress import Progress
 from app.models.streak import Streak
 from app.models.workout_exercise import WorkoutExercise
 from app.models.workout_plan import WorkoutPlan
+from app.models.meal import Meal
+from app.models.water_tracking import WaterTracking
+from app.models.user_preferences import UserPreferences

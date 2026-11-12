@@ -1,6 +1,6 @@
 # FitTrack – Fitness & Workout Management Platform
 
-FitTrack is a full-stack fitness tracker built with FastAPI, SQLAlchemy, SQLite, React, TypeScript, and Vite. It supports the Phase 1 tracking requirements and Phase 2 planning, exercise-library, progress-comparison, streak, achievement, and personalized-dashboard features.
+FitTrack is a full-stack fitness tracker built with FastAPI, SQLAlchemy, SQLite, React, TypeScript, and Vite. It supports Phase 1 fitness tracking, Phase 2 planning and engagement, and Phase 3 nutrition, hydration, recommendations, workout timing, reminders, and advanced analytics.
 
 The full implementation brief, scope, file checklist, and acceptance criteria are in [PROJECT_SPEC.md](./PROJECT_SPEC.md).
 
@@ -18,6 +18,14 @@ The full implementation brief, scope, file checklist, and acceptance criteria ar
 - Searchable, category-filtered exercise library; add library exercises to an owned workout.
 - Current and longest streak tracking; milestone badges and achievement notifications.
 - Personalized dashboard with daily stats, goals, upcoming workouts, streak, and earned badges.
+
+### Phase 3
+- Daily meal logging with calorie and macro summaries; configurable water goals and intake tracking.
+- Personalized, rule-based workout suggestions based on goals, recent activity, and streaks.
+- Live workout timer that saves a workout and estimated calorie count to the workout history.
+- Eight-week and 30-day trends, workout consistency, and goal-completion analytics.
+- Per-user, timezone-aware in-app workout, meal, and hydration reminders.
+- Google Fit and Apple Health are optional future integrations and are not configured in this starter.
 
 ## Requirements
 - Python 3.10 or newer
@@ -104,6 +112,11 @@ All application endpoints are under `/api`; interactive OpenAPI docs are availab
 | Workout plans | `GET/POST /plans`, `GET/PATCH/DELETE /plans/{id}` |
 | Exercise library | `GET /exercises?search=...&category=...` |
 | Dashboard and engagement | `GET /dashboard`, `/streak`, `/badges`, `/badges/catalog` |
+| Nutrition | `GET/POST /nutrition/meals`, `PATCH/DELETE /nutrition/meals/{id}`, `GET /nutrition/summary` |
+| Hydration | `GET/POST /water`, `DELETE /water/{id}` |
+| Reminders and preferences | `GET/PATCH /settings/reminders` |
+| Recommendations | `GET /recommendations` |
+| Advanced analytics | `GET /analytics/advanced` |
 
 Authenticated routes require an `Authorization: Bearer <token>` header. User-owned data is always queried by both resource ID and authenticated user ID.
 
@@ -139,17 +152,19 @@ Fit_Track/
     └── src/
         ├── components/          # reusable UI components
         ├── hooks/               # shared React data hooks
-        ├── pages/               # authentication and Phase 2 feature screens
+        ├── pages/               # authentication, Phase 2 and Phase 3 feature screens
         ├── services/            # API client and authentication
         ├── styles/              # application styles
         ├── types/               # shared frontend data types
         ├── utils/               # shared helpers
-        ├── App.tsx              # navigation shell and Phase 1 screens
+        ├── App.tsx              # navigation shell, analytics, workout timer
         ├── main.tsx
         └── vite-env.d.ts
 ```
 
 `public/` and `assets/` are not currently needed because the app has no static media files. Add them when the UI introduces assets.
+
+Phase 3 implementation files include `backend/app/models/meal.py`, `water_tracking.py`, and `user_preferences.py`; their API routes are in `backend/app/api/v1/endpoints/nutrition.py`, `water.py`, `preferences.py`, and `recommendations.py`. Nutrition persistence is grouped in `backend/app/crud/nutrition.py`; recommendation and reminder logic lives in `backend/app/services/recommendations.py` and `reminders.py`. The Phase 3 frontend is in `frontend/src/pages/PhaseThreeFeatures.tsx`, with the workout timer and analytics in `frontend/src/App.tsx`. New ownership and calculation tests are in `backend/tests/test_phase3.py`.
 
 ## Tests and build
 
@@ -170,7 +185,7 @@ npm run build
 
 - Passwords are bcrypt-hashed. JWTs are signed with `SECRET_KEY`; use a unique secret and HTTPS in deployed environments.
 - The frontend stores the JWT in `localStorage` as requested. This is vulnerable to token theft if a cross-site scripting flaw is introduced; production deployments should assess an HttpOnly-cookie design.
-- The daily reminder runs inside the API process at the configured local time and creates an in-app notification for users who have not logged a workout that day. Run a single API worker when using this in-process scheduler; move scheduling to a dedicated worker for multi-worker or multi-instance deployments.
+- The reminder scheduler runs inside the API process and creates per-user, timezone-aware in-app notifications for enabled workout, meal, and hydration reminders when the activity remains incomplete. Run a single API worker when using this in-process scheduler; move scheduling to a dedicated worker for multi-worker or multi-instance deployments.
 - Tables are created from SQLAlchemy metadata at application startup for this starter. `create_all` is not a schema-migration system; add and apply reviewed Alembic migrations before evolving a deployed database.
 - Calories and goals are user-entered estimates, not medical measurements. The app is not medical advice.
 - Before production, configure HTTPS, a production database, schema migrations, rate limiting, structured logging, backups, monitoring, and a reviewed secret-management process.

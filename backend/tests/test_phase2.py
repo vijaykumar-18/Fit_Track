@@ -54,6 +54,10 @@ def test_progress_comparison_and_personalized_dashboard(client):
     dashboard = client.get("/api/dashboard", headers=headers)
     assert dashboard.status_code == 200
     assert dashboard.json()["daily_summary"]["total_workouts"] == 1
+    assert any(
+        earned_badge["badge"]["name"] == "First Workout"
+        for earned_badge in dashboard.json()["badges"]
+    )
     assert client.get("/api/progress/comparison?period=weekly", headers=headers).status_code == 200
     assert client.get("/api/progress/comparison?period=monthly", headers=headers).status_code == 200
 

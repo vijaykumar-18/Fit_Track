@@ -7,6 +7,8 @@ from app.schemas.auth import Token, UserCreate, UserRead
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.dependencies import get_current_user
 from app.crud.user import find_by_identifier
+from app.core.config import settings
+from app.models.user_preferences import UserPreferences
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -19,6 +21,12 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Username or email is already registered")
     user = User(username=payload.username, email=str(payload.email).lower(), hashed_password=hash_password(payload.password))
     db.add(user)
+    db.flush()
+    db.add(UserPreferences(
+        user_id=user.id,
+        workout_reminder_time=f"{settings.reminder_hour:02d}:{settings.reminder_minute:02d}",
+        timezone=settings.reminder_timezone,
+    ))
     db.commit()
     db.refresh(user)
     return user

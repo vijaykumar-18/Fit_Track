@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth, badges, comparisons, dashboard, exercises, goals, notifications, reports,
-    streaks, workout_plans, workouts,
+    streaks, workout_plans, workouts, nutrition, water, preferences, recommendations,
 )
 
 router = APIRouter()
@@ -18,3 +18,7 @@ router.include_router(comparisons.router)
 router.include_router(streaks.router)
 router.include_router(badges.router)
 router.include_router(dashboard.router)
+router.include_router(nutrition.router)
+router.include_router(water.router)
+router.include_router(preferences.router)
+router.include_router(recommendations.router)

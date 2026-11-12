@@ -67,3 +67,56 @@ export type ProgressSummary = {
   total_calories: number
   total_duration: number
 }
+
+export type Meal = {
+  id: number
+  user_id: number
+  meal_type: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
+  food_name: string
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  meal_date: string
+  created_at: string
+}
+
+export type NutritionSummary = {
+  date: string
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+}
+
+export type WaterEntry = {
+  id: number
+  user_id: number
+  quantity: number
+  date: string
+  created_at: string
+}
+
+export type WaterSummary = {
+  date: string
+  total_ml: number
+  goal_ml: number
+  progress_percent: number
+  entries: WaterEntry[]
+}
+
+export type UserPreferences = {
+  timezone: string
+  water_goal_ml: number
+  workout_reminder_enabled: boolean
+  workout_reminder_time: string
+  meal_reminder_enabled: boolean
+  meal_reminder_time: string
+  water_reminder_enabled: boolean
+  water_reminder_time: string
+}
+
+export type WorkoutRecommendation = {
+  exercise: Exercise
+  reason: string
+}

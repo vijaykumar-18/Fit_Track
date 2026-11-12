@@ -1,7 +1,7 @@
 import axios from 'axios'
-import type { Badge, Exercise, Goal, Notification, ProgressSummary, Streak, User, Workout, WorkoutPlan } from '../types'
+import type { Badge, Exercise, Goal, Meal, Notification, ProgressSummary, Streak, User, UserPreferences, WaterSummary, Workout, WorkoutPlan, WorkoutRecommendation } from '../types'
 
-export type { Badge, Exercise, Goal, Notification, ProgressSummary, Streak, User, Workout, WorkoutPlan } from '../types'
+export type { Badge, Exercise, Goal, Meal, Notification, ProgressSummary, Streak, User, UserPreferences, WaterSummary, Workout, WorkoutPlan, WorkoutRecommendation } from '../types'
 
 const apiOrigin = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 export const api = axios.create({ baseURL: `${apiOrigin}/api` })

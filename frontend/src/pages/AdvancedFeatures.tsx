@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Award, CalendarDays, ChevronLeft, ChevronRight, Flame, Plus, Search, Trash2 } from 'lucide-react'
+import { Award, CalendarDays, ChevronLeft, ChevronRight, Flame, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { api } from '../services/api'
 import type { Badge, Exercise, Streak, WorkoutPlan } from '../types'
 import { localDateString } from '../utils/date'
@@ -11,6 +11,7 @@ export function WorkoutPlans({ refresh, onRefresh }: { refresh: number; onRefres
   const [scheduledDate, setScheduledDate] = useState(localDateString())
   const [visibleMonth, setVisibleMonth] = useState(() => new Date())
   const [error, setError] = useState('')
+  const [editingPlan, setEditingPlan] = useState<WorkoutPlan | null>(null)
 
   async function loadPlans() {
     try {
@@ -27,7 +28,13 @@ export function WorkoutPlans({ refresh, onRefresh }: { refresh: number; onRefres
   async function createPlan(event: FormEvent) {
     event.preventDefault()
     try {
-      await api.post('/plans', { title, description, scheduled_date: scheduledDate })
+      const payload = { title, description, scheduled_date: scheduledDate }
+      if (editingPlan) {
+        await api.patch(`/plans/${editingPlan.id}`, payload)
+        setEditingPlan(null)
+      } else {
+        await api.post('/plans', payload)
+      }
       setTitle('')
       setDescription('')
       await loadPlans()
@@ -68,7 +75,8 @@ export function WorkoutPlans({ refresh, onRefresh }: { refresh: number; onRefres
         <label>Description<textarea maxLength={2000} rows={4} value={description} onChange={event => setDescription(event.target.value)} placeholder="Optional notes or focus for this session" /></label>
         <label>Scheduled date<input type="date" min={localDateString()} required value={scheduledDate} onChange={event => setScheduledDate(event.target.value)} /></label>
         {error && <p className="error">{error}</p>}
-        <button className="primary full"><Plus size={16} /> Schedule workout</button>
+        <button className="primary full"><Plus size={16} /> {editingPlan ? 'Update workout plan' : 'Schedule workout'}</button>
+        {editingPlan && <button type="button" className="secondary full" onClick={() => { setEditingPlan(null); setTitle(''); setDescription(''); setScheduledDate(localDateString()) }}>Cancel edit</button>}
       </form>
       <section className="panel">
         <div className="panel-heading"><div><h3>Workout calendar</h3><p className="muted">Scheduled workout dates.</p></div></div>
@@ -82,7 +90,7 @@ export function WorkoutPlans({ refresh, onRefresh }: { refresh: number; onRefres
         {upcomingPlans.length ? <div className="planned-list">{upcomingPlans.map(plan => <article className="planned-item" key={plan.id}>
           <div className="planned-date"><strong>{new Date(`${plan.scheduled_date}T12:00:00`).getDate()}</strong><span>{new Date(`${plan.scheduled_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short' })}</span></div>
           <div className="planned-copy"><strong>{plan.title}</strong><span>{plan.scheduled_date}</span>{plan.description && <p>{plan.description}</p>}</div>
-          <button className="icon-button danger" title="Delete plan" onClick={() => void deletePlan(plan.id)}><Trash2 size={16} /></button>
+          <div className="plan-actions"><button className="icon-button" title="Edit plan" onClick={() => { setEditingPlan(plan); setTitle(plan.title); setDescription(plan.description); setScheduledDate(plan.scheduled_date) }}><Pencil size={15} /></button><button className="icon-button danger" title="Delete plan" onClick={() => void deletePlan(plan.id)}><Trash2 size={16} /></button></div>
         </article>)}</div> : <div className="empty-state">No upcoming workouts scheduled.</div>}
       </section>
     </div>

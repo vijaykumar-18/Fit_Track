@@ -11,7 +11,9 @@ from app.api.v1.router import router as api_router
 from app.models.exercise import Exercise
 from app.services.badges import seed_badges
 from app.services.progress import rebuild_progress
-from app.services.reminders import daily_reminder_loop
+from app.models.user_preferences import UserPreferences
+from app.models.user import User
+from app.services.reminders import reminder_loop
 
 DEFAULT_EXERCISES = (
     ("Walking", "Cardio", "Steady, low-impact aerobic movement.", 30),
@@ -35,11 +37,20 @@ async def lifespan(app: FastAPI):
             if name not in known:
                 db.add(Exercise(name=name, category=category, description=description, duration=duration))
         db.commit()
+        configured_users = {user_id for (user_id,) in db.query(UserPreferences.user_id).all()}
+        for (user_id,) in db.query(User.id).all():
+            if user_id not in configured_users:
+                db.add(UserPreferences(
+                    user_id=user_id,
+                    timezone=settings.reminder_timezone,
+                    workout_reminder_time=f"{settings.reminder_hour:02d}:{settings.reminder_minute:02d}",
+                ))
+        db.commit()
         seed_badges(db)
         rebuild_progress(db)
         db.commit()
     reminder_task = asyncio.create_task(
-        daily_reminder_loop(settings.reminder_hour, settings.reminder_minute, settings.reminder_timezone)
+        reminder_loop()
     )
     try:
         yield
@@ -54,6 +65,7 @@ app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
