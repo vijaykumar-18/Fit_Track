@@ -120,3 +120,83 @@ export type WorkoutRecommendation = {
   exercise: Exercise
   reason: string
 }
+
+export type DietPlan = {
+  id: number
+  title: string
+  description: string
+  goal_type: 'Weight Loss' | 'Muscle Gain' | 'Maintenance'
+  daily_calories: number
+  duration: number
+  created_at: string
+}
+
+export type DietRecommendation = {
+  diet_plan: DietPlan
+  reason: string
+}
+
+export type AssignedDietPlan = {
+  id: number
+  user_id: number
+  diet_plan_id: number
+  assigned_at: string
+  diet_plan: DietPlan
+}
+
+export type SubscriptionPlan = {
+  id: number
+  name: 'Free' | 'Premium' | 'Pro'
+  price: number
+  duration: number
+  features: string[]
+  created_at: string
+}
+
+export type UserSubscription = {
+  id: number
+  user_id: number
+  subscription_id: number
+  start_date: string
+  end_date: string
+  subscription: SubscriptionPlan
+}
+
+export type Nutritionist = {
+  id: number
+  name: string
+  specialization: string
+  experience: number
+  contact_info: string
+}
+
+export type Consultation = {
+  id: number
+  user_id: number
+  nutritionist_id: number
+  scheduled_time: string
+  status: string
+  created_at: string
+  nutritionist: Nutritionist
+}
+
+export type Doctor = {
+  id: number
+  name: string
+  specialization: 'Dietician' | 'General Doctor' | 'Nutrition Expert'
+  experience: number
+  contact_info: string
+  availability_status: boolean
+  created_at: string
+}
+
+export type Appointment = {
+  id: number
+  user_id: number
+  doctor_id: number
+  appointment_date: string
+  time_slot: string
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED'
+  created_at: string
+  doctor: Doctor
+}

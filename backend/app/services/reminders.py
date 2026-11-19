@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
@@ -8,6 +8,9 @@ from sqlalchemy import func
 from app.database.connection import SessionLocal
 from app.models.meal import Meal
 from app.models.notification import Notification
+from app.models.appointment import Appointment
+from app.models.nutritionist import Consultation
+from app.models.subscription import UserSubscription
 from app.models.user_preferences import UserPreferences
 from app.models.water_tracking import WaterTracking
 from app.models.workout import Workout
@@ -58,6 +61,62 @@ def create_due_reminders(now: datetime | None = None) -> None:
                     completed = int(total) >= preference.water_goal_ml
                 if not completed:
                     db.add(Notification(user_id=preference.user_id, title=title, message=message))
+        subscription_deadline = current_time + timedelta(days=3)
+        for item in db.query(UserSubscription).filter(
+            UserSubscription.end_date > current_time,
+            UserSubscription.end_date <= subscription_deadline,
+        ).all():
+            end_date = item.end_date
+            if end_date.tzinfo is None:
+                end_date = end_date.replace(tzinfo=timezone.utc)
+            message = f"Your subscription ends on {end_date.date().isoformat()}. Review your plan."
+            exists = db.query(Notification.id).filter(
+                Notification.user_id == item.user_id,
+                Notification.title == "Subscription expiry alert",
+                Notification.message == message,
+            ).first()
+            if not exists:
+                db.add(Notification(
+                    user_id=item.user_id,
+                    title="Subscription expiry alert",
+                    message=message,
+                ))
+        upcoming_cutoff = current_time + timedelta(hours=24)
+        for booking in db.query(Consultation).filter(
+            Consultation.scheduled_time > current_time,
+            Consultation.scheduled_time <= upcoming_cutoff,
+            Consultation.status.in_(("PENDING", "CONFIRMED")),
+        ).all():
+            scheduled_time = booking.scheduled_time
+            message = f"You have a nutritionist consultation scheduled for {scheduled_time.isoformat()}."
+            exists = db.query(Notification.id).filter(
+                Notification.user_id == booking.user_id,
+                Notification.title == "Consultation reminder",
+                Notification.message == message,
+            ).first()
+            if not exists:
+                db.add(Notification(
+                    user_id=booking.user_id,
+                    title="Consultation reminder",
+                    message=message,
+                ))
+        for booking in db.query(Appointment).filter(
+            Appointment.appointment_date > current_time,
+            Appointment.appointment_date <= upcoming_cutoff,
+            Appointment.status.in_(("PENDING", "CONFIRMED")),
+        ).all():
+            message = f"You have a doctor appointment scheduled for {booking.appointment_date.isoformat()}."
+            exists = db.query(Notification.id).filter(
+                Notification.user_id == booking.user_id,
+                Notification.title == "Appointment reminder",
+                Notification.message == message,
+            ).first()
+            if not exists:
+                db.add(Notification(
+                    user_id=booking.user_id,
+                    title="Appointment reminder",
+                    message=message,
+                ))
         db.commit()
 
 

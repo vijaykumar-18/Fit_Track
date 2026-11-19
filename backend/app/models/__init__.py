@@ -11,3 +11,9 @@ from app.models.workout_plan import WorkoutPlan
 from app.models.meal import Meal
 from app.models.water_tracking import WaterTracking
 from app.models.user_preferences import UserPreferences
+from app.models.diet_plan import DietPlan
+from app.models.user_diet_plan import UserDietPlan
+from app.models.subscription import Subscription, UserSubscription
+from app.models.nutritionist import Nutritionist, Consultation
+from app.models.doctor import Doctor
+from app.models.appointment import Appointment

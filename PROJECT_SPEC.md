@@ -114,6 +114,43 @@ Provide a protected dashboard response and layout with daily summary, upcoming s
 - Store reminders as in-app notifications. The scheduler must check each user in their configured timezone.
 - Keep reminder state private to the authenticated user and validate time, timezone, and goal inputs.
 
+## Phase 4 – Nutrition and healthcare support
+
+### 17. Diet plans and recommendations
+
+- Diet plans have `id`, `title`, `description`, `goal_type` (`Weight Loss`, `Muscle Gain`, `Maintenance`), `daily_calories`, `duration`, and `created_at`.
+- Authenticated users can list and view seeded plans and request plan recommendations using a goal, daily calorie requirement, and activity level.
+- Recommendation results explain how the selected plan matches the requested goal and adjusted calorie target. Existing active fitness goals are used as the default goal when one is not supplied.
+- Premium and Pro users can assign plans to themselves. Assignments are stored in `user_diet_plans` and are only visible to the owning user.
+- The frontend provides a plan catalog, details, recommendation controls, and assigned-plan history.
+
+### 18. Subscriptions
+
+- Subscription catalog entries have `id`, `name` (`Free`, `Premium`, `Pro`), `price`, `duration`, `features`, and `created_at`.
+- User subscriptions have `id`, `user_id`, `subscription_id`, `start_date`, and `end_date`. The current plan is derived from the user's latest active subscription; accounts without an active record receive Free access.
+- Users can select a plan to upgrade or downgrade. Premium/Pro access is required for diet-plan assignment and nutritionist consultations.
+- The starter's plan selection is a demo entitlement only. It does not process payments; configure a payment provider and verified payment webhooks before charging users.
+
+### 19. Nutritionist consultations
+
+- Nutritionist profiles have `id`, `name`, `specialization`, `experience`, and `contact_info`.
+- Consultation bookings have `id`, `user_id`, `nutritionist_id`, `scheduled_time`, `status`, and `created_at`.
+- Authenticated Premium/Pro users can request a future consultation, view their booking history, and cancel pending bookings. Each user's history is owner-scoped.
+- The notification scheduler creates in-app reminders for pending consultations due within 24 hours.
+
+### 20. Doctor support and appointments
+
+- Doctor profiles have `id`, `name`, `specialization` (`Dietician`, `General Doctor`, `Nutrition Expert`), `experience`, `contact_info`, `availability_status`, and `created_at`.
+- Appointment requests have `id`, `user_id`, `doctor_id`, `appointment_date`, `time_slot`, `status` (`PENDING`, `CONFIRMED`, `CANCELLED`), and `created_at`.
+- Authenticated users can view profiles, request appointments with available doctors, view their own appointment history, and cancel their own pending or confirmed requests.
+- The notification scheduler creates in-app reminders for upcoming pending or confirmed appointments. Booking requests remain pending until confirmed by an operational provider workflow.
+
+### 21. Notifications and demo provider data
+
+- Reuse the user-owned notifications table for meal reminders, subscription-expiry alerts, and consultation/appointment booking and reminder updates.
+- Seeded diet plans, subscription tiers, nutritionists, and doctors make the starter usable immediately. Seeded provider profiles and contact information are explicitly demo data, not verified healthcare providers.
+- Nutrition and calorie plans are educational examples only, not medical advice or an individualized prescription.
+
 ## Data model checklist
 
 Required tables:
@@ -132,6 +169,14 @@ Required tables:
 - `meals`
 - `water_tracking`
 - `user_preferences` (timezone, hydration goal, reminder settings and per-day delivery guards)
+- `diet_plans`
+- `user_diet_plans` (user-owned plan assignments)
+- `subscriptions`
+- `user_subscriptions`
+- `nutritionists`
+- `consultations`
+- `doctors`
+- `appointments`
 
 Use foreign keys and indexes for user/date lookups, uniqueness constraints for usernames, emails, and duplicate associations/awards, and cascading cleanup for user-owned records. Persist daily progress snapshots and synchronize them when workout records change.
 
@@ -169,6 +214,12 @@ backend/
       meal.py
       water_tracking.py
       user_preferences.py
+      diet_plan.py
+      user_diet_plan.py
+      subscription.py
+      nutritionist.py
+      doctor.py
+      appointment.py
     schemas/
       auth.py
       workout.py
@@ -178,8 +229,10 @@ backend/
       workout_plan.py
       exercise.py
       nutrition.py
+      phase4.py
       preferences.py
       engagement.py
+      phase4.py
     crud/
       user.py
       workout.py
@@ -207,6 +260,7 @@ backend/
         water.py
         preferences.py
         recommendations.py
+        phase4.py
     services/
       analytics.py
       badges.py
@@ -214,12 +268,14 @@ backend/
       progress.py
       reminders.py
       recommendations.py
+      diet_recommendations.py
       streak.py
   tests/
     conftest.py
     test_health.py
     test_phase2.py
     test_phase3.py
+    test_phase4.py
 frontend/
   .env.example
   package.json
@@ -229,6 +285,7 @@ frontend/
       AuthPage.tsx
       AdvancedFeatures.tsx
       PhaseThreeFeatures.tsx
+      PhaseFourFeatures.tsx
     services/
       api.ts
       authService.ts
@@ -248,7 +305,7 @@ frontend/
 
 Keep route handlers in the versioned API package, persistence queries in CRUD modules, business rules in services, and request/response types in domain schema modules. Add focused tests whenever a new route, ownership rule, calculation, or achievement rule is introduced. Add `public/` or `assets/` only when static assets are needed.
 
-The current frontend keeps dashboard, workout, goal, report, and notification screens in `App.tsx`; Phase 3 screens are in `PhaseThreeFeatures.tsx`. Tests are split by phase. Static `public/` and `assets/` directories are intentionally omitted until the app needs image or font assets.
+The current frontend keeps dashboard, workout, goal, report, and notification screens in `App.tsx`; Phase 3 screens are in `PhaseThreeFeatures.tsx` and Phase 4 screens are in `PhaseFourFeatures.tsx`. Tests are split by phase. Static `public/` and `assets/` directories are intentionally omitted until the app needs image or font assets.
 
 ## Security, reliability, and quality requirements
 
@@ -276,6 +333,11 @@ The current frontend keeps dashboard, workout, goal, report, and notification sc
 12. Advanced analytics provide weekly trends, 30-day trends, consistency, and goal completion with charts.
 13. Optional provider sync is clearly identified as not configured until credentials and consent flows exist.
 14. Backend tests pass, frontend type-check/build passes, and README setup works on Windows PowerShell.
+15. Users can browse diet plans, receive goal/calorie/activity-based recommendations, and assign plans with Premium/Pro access.
+16. Users can view Free/Premium/Pro tiers and change their active plan; the UI clearly states that plan selection does not process payments.
+17. Nutritionist bookings and doctor appointments validate future schedules, maintain pending/cancelled status, and are only visible to their owner.
+18. Subscription-expiry, consultation, and doctor-appointment reminders are stored as private in-app notifications without duplicate scheduler sends.
+19. Provider listings identify seeded contacts as demo data and do not claim that they are verified or real medical professionals.
 
 ## Current project notes
 

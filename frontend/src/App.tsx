@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { Activity, Award, Bell, BookOpen, CalendarDays, CalendarRange, ChartNoAxesCombined, Check, Droplets, Dumbbell, Flag, Flame, LayoutDashboard, LogOut, Pencil, Play, Plus, Square, Trash2, UserRound } from 'lucide-react'
+import { Activity, Award, Bell, BookOpen, CalendarDays, CalendarRange, ChartNoAxesCombined, Check, Crown, Droplets, Dumbbell, Flag, Flame, LayoutDashboard, Leaf, LogOut, Pencil, Play, Plus, Square, Stethoscope, Trash2, UserRound } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api } from './services/api'
 import { logout as clearAuth } from './services/authService'
@@ -11,6 +11,7 @@ import { useFitnessData } from './hooks/useFitnessData'
 import { EmptyState as Empty, StatCard } from './components/StatCard'
 import { localDateString } from './utils/date'
 import { NutritionPage, RecommendationsPage, ReminderSettingsPage } from './pages/PhaseThreeFeatures'
+import { DietPlansPage, DoctorsPage, NutritionistsPage, SubscriptionsPage } from './pages/PhaseFourFeatures'
 
 const today = () => localDateString()
 const caloriesPerMinute: Record<Workout['category'], number> = { Cardio: 8, Strength: 6, Yoga: 3 }
@@ -61,7 +62,9 @@ function Shell({ user, onLogout, refresh, onRefresh }: { user: User | null; onLo
     { name: 'Schedule', icon: CalendarRange }, { name: 'Exercise Library', icon: BookOpen },
     { name: 'Achievements', icon: Award }, { name: 'Notifications', icon: Bell },
     { name: 'Nutrition & Water', icon: Droplets }, { name: 'Recommendations', icon: Activity },
-    { name: 'Reminders', icon: Bell },
+    { name: 'Reminders', icon: Bell }, { name: 'Diet Plans', icon: Leaf },
+    { name: 'Subscriptions', icon: Crown }, { name: 'Nutritionists', icon: UserRound },
+    { name: 'Doctors', icon: Stethoscope },
   ]
   return <div className="app-shell">
     <aside className="sidebar">
@@ -71,7 +74,7 @@ function Shell({ user, onLogout, refresh, onRefresh }: { user: User | null; onLo
       <div className="sidebar-bottom"><div className="user-avatar"><UserRound size={18} /></div><div className="user-meta"><strong>{user?.username || 'Your account'}</strong><span>Fitness member</span></div><button className="icon-button" title="Sign out" onClick={onLogout}><LogOut size={17} /></button></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><div><p className="eyebrow">FITNESS MANAGEMENT</p><h1>{page}</h1></div><div className="topbar-right"><span className="date-pill"><CalendarDays size={15} /> {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span><div className="top-avatar">{(user?.username || 'F').slice(0, 1).toUpperCase()}</div></div></header>
+      <header className="topbar"><div><p className="eyebrow">FITNESS & NUTRITION</p><h1>{page}</h1></div><div className="topbar-right"><span className="date-pill"><CalendarDays size={15} /> {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span><div className="top-avatar">{(user?.username || 'F').slice(0, 1).toUpperCase()}</div></div></header>
       {page === 'Overview' && <Dashboard refresh={refresh} onNavigate={setPage} />}
       {page === 'Workouts' && <Workouts refresh={refresh} onRefresh={onRefresh} />}
       {page === 'Goals' && <Goals refresh={refresh} onRefresh={onRefresh} />}
@@ -83,6 +86,10 @@ function Shell({ user, onLogout, refresh, onRefresh }: { user: User | null; onLo
       {page === 'Nutrition & Water' && <NutritionPage refresh={refresh} />}
       {page === 'Recommendations' && <RecommendationsPage onNavigate={setPage} />}
       {page === 'Reminders' && <ReminderSettingsPage refresh={refresh} />}
+      {page === 'Diet Plans' && <DietPlansPage onNavigate={setPage} />}
+      {page === 'Subscriptions' && <SubscriptionsPage refresh={refresh} />}
+      {page === 'Nutritionists' && <NutritionistsPage />}
+      {page === 'Doctors' && <DoctorsPage />}
     </main>
   </div>
 }
